@@ -1,0 +1,10 @@
+---
+title: "Predicting-Insurance-Rates"
+author: "Harsh Mishrikotkar"
+date: "2025-05-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
