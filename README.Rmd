@@ -1,0 +1,209 @@
+---
+title: "Predicting Insurance Rates"
+author: "Harsh Mishrikotkar"
+date: "2025-05-19"
+output: rmarkdown::github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+### Importing Libraries and the Data Set
+
+```{r libraryies and dataset}
+# Installing Libraries
+library(tidyverse)
+library(gridExtra)
+library(grid)
+library(corrplot)
+library(caTools) 
+library(class)
+library(caret)
+# Installing Data set
+insuranceData <- read_csv("insurance.csv")
+```
+### Explanation of Variables and Summary of data set
+
++ **Age:** Age of primary beneficiary
++ **Sex:** Insurance contractor gender, female, male
++ **BMI:** Body mass index, providing an understanding of body, weights that are relatively high or low relative to height, objective index of body weight (kg / m ^ 2) using the ratio of height to weight
++ **Children:** Number of children covered by health insurance / Number of dependents
++ **Smoker:** Smoking
++ **Region** The beneficiary's residential area in the US, northeast, southeast, southwest, northwest
++ **Charges:** Individual medical costs billed by health insurance
+
+```{r Viewing the data set and its summary}
+summary(insuranceData)
+```
+
+```{r create histograms and bar charts, fig.width = 30, fig.height = 45}
+
+create_all_histograms <- function(data, ncol = 2){
+  if (nrow(data) == 0 || ncol(data) == 0){
+    stop("Dataset is empty")
+  }
+  
+  plot_list <- list()
+  
+  for (col_name in names(data)){
+    current_col <- data[[col_name]]
+    if (is.numeric(current_col)){
+      p <- ggplot(data,
+                  aes(x = .data[[col_name]])) +
+        geom_histogram(fill = "steelblue",
+                       color = "black",
+                       bins = min(15, length(unique(current_col)))) +
+        labs(title = paste("Histogram of", col_name),
+             x = col_name,
+             y = "Frequency") +
+        theme_minimal() +
+        theme(plot.title = element_text(size = 45, face = "bold"),
+              axis.title = element_text(size = 30),
+              axis.text = element_text(size = 30))
+    }
+    
+    else {
+      p <- ggplot(data,
+                  aes(x = .data[[col_name]])) +
+        geom_bar(fill = "slategray",
+                 color = "black") +
+        labs(title = paste("Distribution of", col_name),
+             x = col_name,
+             y = "Count") +
+        theme_minimal() +
+        theme(plot.title = element_text(size = 45, face = "bold"),
+              axis.title = element_text(size = 30),
+              axis.text = element_text(size = 30))
+      if (length(unique(current_col)) > 5){
+        p <- p + theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 30))
+      }
+    }
+    plot_list[[col_name]] <- p
+  }
+  grid.arrange(grobs = plot_list,
+               ncol = ncol,
+               top = textGrob("Histograms of All Variables", gp = gpar(fontsize = 55, fontface = "bold")))
+}
+
+create_all_histograms(insuranceData)
+```
+
+#### Based of the Histogram and Bar plots: 
+
+* **Age**
+    * has no distribution, with a slightly larger grouping at approximately 20, 30, 40 and 54
+* **Sex**
+    * has an almost equal split between Male and Female, with Male occurring slightly more often
+* **BMI**
+    * has an approximately normal distribution with a peak at about 30
+* **Children**
+    * has a skewed right distribution with a peak at 0
+* **Smoker**
+    * has a large split between smokers and non smokers, with a large majority of the beneficiaries being non-smokers
+* **Region**
+    * has an almost equal split between the 4 regions, with slightly more beneficiaries being from the southeast
+* **Charges**
+    * has a skewed right distribution with a peak just bellow $10,000
+    
+### Paired Plot diagram for the numeric data sets
+
+```{r Creating Paired PLots, fig.width = 15, fig.height = 15}
+cols = c(1,3,4,7)
+pairedData <- insuranceData
+pairs(pairedData[, cols], panel=function(x,y){
+  # Get a vector of colors for each point in the plot
+  colors <- ifelse(insuranceData$sex == "male", "blue",
+                   ifelse(insuranceData$sex == "female", "deeppink1", "green"))
+
+  # Plot the points with the corresponding colors
+  points(x, y, col = colors)
+})
+```
+
+The <span style="color:blue;">Blue</span> and <span style="color:pink;">Pink</span> colours in the graphs above are for separating based on sex to see if there are any factors we are not noticing. As there is no colinearlity, we can use all of the variables in creating a model, without worrying about multicolinearity issues.
+
+### Creating A KNN model
+
+```{r Creating A KNN model}
+
+set.seed(2025)
+
+split <- sample.split(insuranceData$charges, SplitRatio = 0.7) 
+train_cl <- subset(insuranceData, split == "TRUE") 
+test_cl <- subset(insuranceData, split == "FALSE")
+
+train_dummy <- dummyVars(" ~ .", data = train_cl)
+train_transformed <- data.frame(predict(train_dummy, newdata = train_cl))
+test_transformed <- data.frame(predict(train_dummy, newdata = test_cl))
+
+preProcValues <- preProcess(train_transformed, method = c("center", "scale"))
+train_scaled <- predict(preProcValues, train_transformed)
+test_scaled <- predict(preProcValues, test_transformed)
+
+x_train <- train_scaled[, !names(train_scaled) %in% "charges"]
+y_train <- train_scaled$charges
+
+x_test <- test_scaled[, !names(test_scaled) %in% "charges"]
+y_test <- test_scaled$charges
+
+
+ctrl <- trainControl(method = "cv", number = 10)
+
+knn_model <- train(x = x_train,
+                   y = y_train,
+                   method = "knn",
+                   trControl = ctrl,
+                   tuneLength = 30)
+
+predictions <- predict(knn_model, newdata = x_test)
+
+```
+
+```{r Uncsaling the model}
+
+charges_mean <- preProcValues$mean["charges"]
+charges_sd <- preProcValues$std["charges"]
+
+actual_unscaled <- y_test * charges_sd + charges_mean
+predicted_unscaled <- predictions * charges_sd + charges_mean
+
+model_metrics <- postResample(pred = predicted_unscaled, obs = actual_unscaled)
+
+rmse_val <- model_metrics["RMSE"]
+rsq_val <- model_metrics["Rsquared"]
+mae_val <- model_metrics["MAE"]
+
+```
+
+
+The KNN model scaled to the normal values achieved an RMSE of `r round(rmse_val, 2)`, an R-squared of `r round(rsq_val, 3)`, and a MAE of `r round(mae_val, 2)` on the test set.
+
+ 
+Given that the Actual Charges range from $1122 to $63770, and the RMSE value of $`r round(rmse_val, 2)`, is low enough for this model to be accurate.
+
+Given the MAE of $`r round(rmse_val, 2)` is low, this model can be said to be accurate.
+
+### Graphing the KNN model
+
+```{r Graphing the model}
+
+
+results <- data.frame(actual = actual_unscaled,
+                      predicted = predicted_unscaled)
+
+ggplot(results,
+       aes(x = actual, y = predicted)) +
+  geom_point(color = "blue", alpha = 0.6) +
+  geom_abline(intercept = 0,
+              slope = 1,
+              color = "red",
+              linetype = "dashed") +
+  labs(title = "Predicted vs Actual Charges",
+       x = "Actual Charges",
+       y = "Predicted Charges") +
+  theme_minimal()
+
+```
+
+As there is a high concentration near the line, for a perfect prediction, we can say that this modes is accurate for most charges except in cases of high Actual charges. Most of the predictions appear to be slightly higher than actual charge, but for insurance cases it is better to have a higher predicted cost, and not need all of the money, then to have a lower predicted charge and not have the money.

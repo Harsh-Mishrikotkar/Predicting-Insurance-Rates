@@ -1,4 +1,4 @@
-Predicting-Insurance-Rates
+Predicting Insurance Rates
 ================
 Harsh Mishrikotkar
 2025-05-19
@@ -22,14 +22,29 @@ Harsh Mishrikotkar
     ## The following object is masked from 'package:dplyr':
     ## 
     ##     combine
+
+    ## Warning: package 'corrplot' was built under R version 4.4.3
+
+    ## corrplot 0.95 loaded
+
+    ## Warning: package 'caTools' was built under R version 4.4.3
+
+    ## Warning: package 'class' was built under R version 4.4.3
+
+    ## Warning: package 'caret' was built under R version 4.4.3
+
+    ## Loading required package: lattice
     ## 
+    ## Attaching package: 'caret'
     ## 
-    ## Rows: 1338 Columns: 7
-    ## ── Column specification ────────────────────────────────────────────────────────
+    ## The following object is masked from 'package:purrr':
+    ## 
+    ##     lift
+    ## 
+    ## Rows: 1338 Columns: 7── Column specification ────────────────────────────────────────────────────────
     ## Delimiter: ","
     ## chr (3): sex, smoker, region
     ## dbl (4): age, bmi, children, charges
-    ## 
     ## ℹ Use `spec()` to retrieve the full column specification for this data.
     ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
 
@@ -64,7 +79,7 @@ Harsh Mishrikotkar
     ##                                        3rd Qu.:16640  
     ##                                        Max.   :63770
 
-![](Predicting-Insurance-Rates_files/figure-gfm/create%20histograms%20and%20bar%20charts-1.png)<!-- -->
+![](README_files/figure-gfm/create%20histograms%20and%20bar%20charts-1.png)<!-- -->
 
 #### Based of the Histogram and Bar plots:
 
@@ -86,3 +101,35 @@ Harsh Mishrikotkar
     beneficiaries being from the southeast
 - **Charges**
   - has a skewed right distribution with a peak just bellow \$10,000
+
+### Paired Plot diagram for the numeric data sets
+
+![](README_files/figure-gfm/Creating%20Paired%20PLots-1.png)<!-- -->
+
+The <span style="color:blue;">Blue</span> and
+<span style="color:pink;">Pink</span> colours in the graphs above are
+for separating based on sex to see if there are any factors we are not
+noticing. As there is no colinearlity, we can use all of the variables
+in creating a model, without worrying about multicolinearity issues.
+
+### Creating A KNN model
+
+The KNN model scaled to the normal values achieved an RMSE of 5277.17,
+an R-squared of 0.802, and a MAE of 3214.32 on the test set.
+
+Given that the Actual Charges range from \$1122 to \$63770, and the RMSE
+value of \$5277.17, is low enough for this model to be accurate.
+
+Given the MAE of \$5277.17 is low, this model can be said to be
+accurate.
+
+### Graphing the KNN model
+
+![](README_files/figure-gfm/Graphing%20the%20model-1.png)<!-- -->
+
+As there is a high concentration near the line, for a perfect
+prediction, we can say that this modes is accurate for most charges
+except in cases of high Actual charges. Most of the predictions appear
+to be slightly higher than actual charge, but for insurance cases it is
+better to have a higher predicted cost, and not need all of the money,
+then to have a lower predicted charge and not have the money.
